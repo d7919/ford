@@ -172,7 +172,7 @@ class Documentation(object):
                 #thereby adding them to the namelist if not there.
                 #Doesn't seem to quite do the correct thing -- getting "inverted"
                 #behaviour
-                ford.sourceform.namelist.restore_backup(nameBak)
+                ford.sourceform.namelist = ford.sourceform.NameSelector() #.restore_backup(nameBak)
                 map(lambda x: x.obj.ident, self.docs)
 
             else:
@@ -190,26 +190,12 @@ class Documentation(object):
                     self.docs.append(ProgPage(data,project,item))
                 for item in project.blockdata:
                     self.docs.append(BlockPage(data,project,item))
-            #Not worth parallelising the following -- cheap
-            if len(project.procedures) > 0:
-                self.lists.append(ProcList(data,project))
-            if len(project.allfiles) > 1:
-                self.lists.append(FileList(data,project))
-            if len(project.modules + project.submodules) > 0:
-                self.lists.append(ModList(data,project))
-            if len(project.programs) > 1:
-                self.lists.append(ProgList(data,project))
-            if len(project.types) > 0:
-                self.lists.append(TypeList(data,project))
-            if len(project.absinterfaces) > 0:
-                self.lists.append(AbsIntList(data,project))
-            if len(project.blockdata) > 1:
-                self.lists.append(BlockList(data,project))
+
             if pagetree:
                 for item in pagetree:
                     self.pagetree.append(PagetreePage(data,project,item))
             t2 = time.time()
-            if self.data['dbg']:
+            if self.data['dbg'] or True:
                 print('\tTime taken : {t}s'.format(t=t2-t1))
         except Exception as e:
             if data['dbg']:
