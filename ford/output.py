@@ -126,6 +126,21 @@ class Documentation(object):
         try:
             t1 = time.time()
 
+            #Not worth parallelising the following -- cheap
+            if len(project.procedures) > 0:
+                self.lists.append(ProcList(data,project))
+            if len(project.allfiles) > 1:
+                self.lists.append(FileList(data,project))
+            if len(project.modules + project.submodules) > 0:
+                self.lists.append(ModList(data,project))
+            if len(project.programs) > 1:
+                self.lists.append(ProgList(data,project))
+            if len(project.types) > 0:
+                self.lists.append(TypeList(data,project))
+            if len(project.absinterfaces) > 0:
+                self.lists.append(AbsIntList(data,project))
+            if len(project.blockdata) > 1:
+                self.lists.append(BlockList(data,project))
             #Disable the following because it currently generates files/objs with
             #inconsistent names. Does correct work but leads to incorrect file names.
             #Possibly due to differing memory locations of instances in pool processes
