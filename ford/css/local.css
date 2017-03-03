@@ -195,3 +195,20 @@ body {
       z-index: 100000;
     }
     
+/* MathJax settings */                                                                                                                                                                                             
+.MathJax_Display {/* Non-inline maths is a bit bigger */
+   font-size: 150%;
+}
+.MathJax {
+    color: #000000;
+}
+.MathJax .mo {
+    color: inherit;
+}
+.MathJax .mn {
+    color: inherit;
+}
+.MathJax .mi {
+    color: inherit;
+}
+
