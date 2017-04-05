@@ -58,7 +58,7 @@
               aria-haspopup="true"
 		 aria-expanded="false">Contents <span class="caret"></span></a>
 	      <ul class="dropdown-menu">
-              {% if project.allfiles|length > 1 %}
+              {% if project.files|length + project.extra_files|length > 1 %}
             <li><a href="{{ project_url }}/lists/files.html">Source Files</a></li>
 				{% else %}
             <li><a href="{{project.files[0].get_url()}}">Source File</a></li>
@@ -86,7 +86,7 @@
 	    {% endif %}
             </ul>
             </li>
-{% if project.allfiles|length > 1 %}
+{% if project.files|length + project.extra_files|length > 1 %}
 <li class="visible-xs hidden-sm visible-lg"><a href="{{ project_url }}/lists/files.html">Source Files</a></li>
 {% else %}
 <li class="visible-xs hidden-sm visible-lg"><a href="{{project.files[0].get_url()}}">Source File</a></li>
@@ -172,6 +172,9 @@
         }
       });
     </script>
+    {% if mathjax_config %}
+    <script src="{{ project_url }}/js/MathJax-config/{{ path.basename(mathjax_config) }}"></script>
+    {% endif %}
     <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
     {% if search|lower == 'true' %}

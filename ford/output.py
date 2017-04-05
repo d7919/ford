@@ -57,6 +57,7 @@ sys.setrecursionlimit(50000)
 
 loc = os.path.dirname(__file__)
 env = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.join(loc, "templates")))
+env.globals['path'] = os.path # this lets us call path.* in templates
 
 class Documentation(object):
     """
@@ -94,9 +95,13 @@ class Documentation(object):
 
             for item in project.types:
                 self.graphs.register(item)
-            for item in project.procedures + project.submodprocedures:
+            for item in project.procedures:
                 self.graphs.register(item)
-            for item in project.modules + project.submodules:
+            for item in project.submodprocedures:
+                self.graphs.register(item)
+            for item in project.modules:
+                self.graphs.register(item)
+            for item in project.submodules:
                 self.graphs.register(item)
             for item in project.programs:
                 self.graphs.register(item)
@@ -178,9 +183,9 @@ class Documentation(object):
             #Not worth parallelising the following -- cheap
             if len(project.procedures) > 0:
                 self.lists.append(ProcList(data,project))
-            if len(project.allfiles) > 1:
+            if len(project.files) + len(project.extra_files) > 1:
                 self.lists.append(FileList(data,project))
-            if len(project.modules + project.submodules) > 0:
+            if len(project.modules) + len(project.submodules) > 0:
                 self.lists.append(ModList(data,project))
             if len(project.programs) > 1:
                 self.lists.append(ProgList(data,project))
@@ -256,6 +261,8 @@ class Documentation(object):
 
     def writeout(self):
         t1=time.time()
+        print("Writing HTML documentation...")
+
         out_dir = self.data['output_dir']
         try:
             if os.path.isfile(out_dir):
@@ -294,8 +301,19 @@ class Documentation(object):
             shutil.copy(self.data['favicon'],os.path.join(out_dir,'favicon.png'))
         for src in self.project.allfiles:
             shutil.copy(src.path,os.path.join(out_dir,'src',src.name))
-        for p in self.docs + self.lists + self.pagetree + [self.index, self.search]:
+        if 'mathjax_config' in self.data:
+            shutil.copy(self.data['mathjax_config'],
+                        os.path.join(out_dir, os.path.join('js/MathJax-config',
+                              os.path.basename(self.data['mathjax_config']))))
+        # By doing this we omit a duplication of data.
+        for p in self.docs:
             p.writeout()
+        for p in self.lists:
+            p.writeout()
+        for p in self.pagetree:
+            p.writeout()
+        self.index.writeout()
+        self.search.writeout()
         t2 = time.time()
         if self.data['dbg']:
             print("Time to do writeout was {t}s".format(t=t2-t1))
@@ -305,31 +323,39 @@ class BasePage(object):
     Abstract class for representation of pages in the documentation.
     
       data
-        Dictionary containing project_directory
+        Dictionary containing project information (to be used when rendering)
       proj
         FortranProject object
       obj
         The object/item in the code which this page is documenting
-    """    
-    def __init__(self,data,proj,obj=None):
-        self.html = self.render(data,proj,obj)
-        self.out_dir = data['output_dir']
-        self.obj = obj
+    """
+    def __init__(self, data, proj, obj=None):
         self.data = data
+        self.proj = proj
+        self.obj = obj
 
+    @property
+    def out_dir(self):
+        """ Returns the output directory of the project """
+        return self.data['output_dir']
+
+    @property
+    def html(self):
+        """ Wrapper for only doing the rendering on request (drastically reduces memory) """
+        return self.render(self.data, self.proj, self.obj)
+    
     def writeout(self):
         out = open(self.outfile,'wb')
         out.write(self.html.encode('utf8'))
         out.close()
     
-    def render(self,data,proj,obj):
+    def render(self, data, proj, obj):
         """
         Get the HTML for the page. This method must be overridden. Arguments
         are proj_data, project object, and item in the code which the
         page documents.
         """
-        raise Exception("Should not instantiate BasePage type")
-
+        raise NotImplementedError("Should not instantiate BasePage type")
 
 class IndexPage(BasePage):
     @property
