@@ -312,8 +312,18 @@ class Documentation(object):
             p.writeout()
         for p in self.pagetree:
             p.writeout()
+
+        if self.index.data['relative']:
+            ford.sourceform.set_base_url('.')
+            ford.pagetree.set_base_url('.')
+            self.index.data['project_url'] = '.'
         self.index.writeout()
         self.search.writeout()
+        if self.index.data['relative']:
+            ford.sourceform.set_base_url('..')
+            ford.pagetree.set_base_url('..')
+            self.index.data['project_url'] = '..'
+
         t2 = time.time()
         if self.data['dbg']:
             print("Time to do writeout was {t}s".format(t=t2-t1))
