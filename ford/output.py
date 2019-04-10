@@ -30,10 +30,12 @@ import os
 import shutil
 import time
 import traceback
+from itertools import chain
 
 import jinja2
 if (sys.version_info[0]>2):
     jinja2.utils.Cycler.next = jinja2.utils.Cycler.__next__
+from tqdm import tqdm
 
 import ford.sourceform
 import ford.tipue_search
@@ -56,23 +58,68 @@ class Documentation(object):
         self.pagetree = []
         self.lists = []
         self.docs = []
-        if data['relative']:
-            ford.sourceform.set_base_url('.')
-            ford.pagetree.set_base_url('.')
-            data['project_url'] = '.'
+        self.njobs = int(self.data['parallel'])
+        self.parallel = self.njobs>0
+
         self.index = IndexPage(data,project,proj_docs)
         self.search = SearchPage(data,project)
-        if data['relative']:
-            ford.sourceform.set_base_url('..')
-            ford.pagetree.set_base_url('..')
-            data['project_url'] = '..'
         if not graphviz_installed and data['graph'].lower() == 'true':
             print("Warning: Will not be able to generate graphs. Graphviz not installed.")
+        if self.data['relative']:
+            graphparent = '../'
+        else:
+            graphparent = ''
+        print("Creating HTML documentation...")
+        try:
+            if data['incl_src'] == 'true':
+                for item in project.allfiles:
+                    self.docs.append(FilePage(data,project,item))
+            for item in project.types:
+                self.docs.append(TypePage(data,project,item))
+            for item in project.absinterfaces:
+                self.docs.append(AbsIntPage(data,project,item))
+            for item in project.procedures:
+                self.docs.append(ProcPage(data,project,item))
+            for item in project.submodprocedures:
+                self.docs.append(ProcPage(data,project,item))
+            for item in project.modules:
+                self.docs.append(ModulePage(data,project,item))
+            for item in project.submodules:
+                self.docs.append(ModulePage(data,project,item))
+            for item in project.programs:
+                self.docs.append(ProgPage(data,project,item))
+            for item in project.blockdata:
+                self.docs.append(BlockPage(data,project,item))
+            if len(project.procedures) > 0:
+                self.lists.append(ProcList(data,project))
+            if data['incl_src'] == 'true':
+                if len(project.files) + len(project.extra_files) > 1:
+                    self.lists.append(FileList(data,project))
+            if len(project.modules) + len(project.submodules) > 0:
+                self.lists.append(ModList(data,project))
+            if len(project.programs) > 1:
+                self.lists.append(ProgList(data,project))
+            if len(project.types) > 0:
+                self.lists.append(TypeList(data,project))
+            if len(project.absinterfaces) > 0:
+                self.lists.append(AbsIntList(data,project))
+            if len(project.blockdata) > 1:
+                self.lists.append(BlockList(data,project))
+            if pagetree:
+                for item in pagetree:
+                    self.pagetree.append(PagetreePage(data,project,item))
+        except Exception as e:
+            if data['dbg']:
+                traceback.print_exc()
+                sys.exit('Error encountered.')
+            else:
+                sys.exit('Error encountered. Run with "--debug" flag for traceback.')
         if graphviz_installed and data['graph'].lower() == 'true':
             print('Generating graphs...')
             self.graphs = GraphManager(self.data['project_url'],
                                        self.data['output_dir'],
                                        self.data.get('graph_dir',''),
+                                       graphparent,
                                        self.data['coloured_edges'].lower() == 'true')
             for item in project.types:
                 self.graphs.register(item)
@@ -99,53 +146,12 @@ class Documentation(object):
             self.graphs = GraphManager(self.data['project_url'],
                                        self.data['output_dir'],
                                        self.data.get('graph_dir',''),
+                                       graphparent,
                                        self.data['coloured_edges'].lower() == 'true')
             project.callgraph = ''
             project.typegraph = ''
             project.usegraph = ''
             project.filegraph = ''
-        try:
-            for item in project.allfiles:
-                self.docs.append(FilePage(data,project,item))
-            for item in project.types:
-                self.docs.append(TypePage(data,project,item))
-            for item in project.absinterfaces:
-                self.docs.append(AbsIntPage(data,project,item))
-            for item in project.procedures:
-                self.docs.append(ProcPage(data,project,item))
-            for item in project.submodprocedures:
-                self.docs.append(ProcPage(data,project,item))
-            for item in project.modules:
-                self.docs.append(ModulePage(data,project,item))
-            for item in project.submodules:
-                self.docs.append(ModulePage(data,project,item))
-            for item in project.programs:
-                self.docs.append(ProgPage(data,project,item))
-            for item in project.blockdata:
-                self.docs.append(BlockPage(data,project,item))
-            if len(project.procedures) > 0:
-                self.lists.append(ProcList(data,project))
-            if len(project.files) + len(project.extra_files) > 1:
-                self.lists.append(FileList(data,project))
-            if len(project.modules) + len(project.submodules) > 0:
-                self.lists.append(ModList(data,project))
-            if len(project.programs) > 1:
-                self.lists.append(ProgList(data,project))
-            if len(project.types) > 0:
-                self.lists.append(TypeList(data,project))
-            if len(project.absinterfaces) > 0:
-                self.lists.append(AbsIntList(data,project))
-            if len(project.blockdata) > 1:
-                self.lists.append(BlockList(data,project))
-            if pagetree:
-                for item in pagetree:
-                    self.pagetree.append(PagetreePage(data,project,item))
-        except Exception as e:
-            if data['dbg']:
-                traceback.print_exc()
-                sys.exit('Error encountered.')
-            else:
-                sys.exit('Error encountered. Run with "--debug" flag for traceback.')
         if data['search'].lower() == 'true':
             print('Creating search index...')
             if data['relative']:
@@ -153,13 +159,15 @@ class Documentation(object):
             else:
                 self.tipue = ford.tipue_search.Tipue_Search_JSON_Generator(data['output_dir'],data['project_url'])
             self.tipue.create_node(self.index.html,'index.html', {'category': 'home'})
-            for p in self.docs:
-                self.tipue.create_node(p.html,p.loc,p.obj.meta)
-            for p in self.pagetree:
-                self.tipue.create_node(p.html,p.loc)
+            jobs = len(self.docs) + len(self.pagetree)
+            progbar = tqdm(chain(iter(self.docs), iter(self.pagetree)),
+                           total=jobs, unit='', file=sys.stdout)
+            for i,p in enumerate(progbar):
+                self.tipue.create_node(p.html,p.loc,p.meta)
+            print('')
             
     def writeout(self):
-        print("Writing HTML documentation...")
+        print("Writing resulting documentation.")
         out_dir = self.data['output_dir']
         try:
             if os.path.isfile(out_dir):
@@ -181,7 +189,7 @@ class Documentation(object):
         copytree(os.path.join(loc,'css'), os.path.join(out_dir,'css'))
         copytree(os.path.join(loc,'fonts'), os.path.join(out_dir,'fonts'))
         copytree(os.path.join(loc,'js'), os.path.join(out_dir,'js'))
-        if self.data['graph'].lower() == 'true': self.graphs.output_graphs()
+        if self.data['graph'].lower() == 'true': self.graphs.output_graphs(self.njobs)
         if self.data['search'].lower() == 'true':
             copytree(os.path.join(loc,'tipuesearch'),os.path.join(out_dir,'tipuesearch'))
             self.tipue.print_output()
@@ -196,12 +204,14 @@ class Documentation(object):
             shutil.copy(os.path.join(loc,'favicon.png'),os.path.join(out_dir,'favicon.png'))
         else:
             shutil.copy(self.data['favicon'],os.path.join(out_dir,'favicon.png'))
-        for src in self.project.allfiles:
-            shutil.copy(src.path,os.path.join(out_dir,'src',src.name))
+        if self.data['incl_src'] == 'true':
+            for src in self.project.allfiles:
+                shutil.copy(src.path,os.path.join(out_dir,'src',src.name))
         if 'mathjax_config' in self.data:
+            os.mkdir(os.path.join(out_dir, 'js', 'MathJax-config'))
             shutil.copy(self.data['mathjax_config'],
-                        os.path.join(out_dir, os.path.join('js/MathJax-config',
-                              os.path.basename(self.data['mathjax_config']))))
+                        os.path.join(out_dir, 'js', 'MathJax-config',
+                              os.path.basename(self.data['mathjax_config'])))
         # By doing this we omit a duplication of data.
         for p in self.docs:
             p.writeout()
@@ -237,6 +247,7 @@ class BasePage(object):
         self.data = data
         self.proj = proj
         self.obj = obj
+        self.meta = getattr(obj, "meta", {})
 
     @property
     def out_dir(self):
@@ -269,6 +280,10 @@ class IndexPage(BasePage):
         return os.path.join(self.out_dir,'index.html')
 
     def render(self,data,proj,obj):
+        if data['relative']:
+            data['project_url'] = '.'
+            ford.sourceform.set_base_url('.')
+            ford.pagetree.set_base_url('.')
         template = env.get_template('index.html')
         return template.render(data,project=proj,proj_docs=obj)
 
@@ -279,6 +294,10 @@ class SearchPage(BasePage):
         return os.path.join(self.out_dir,'search.html')
 
     def render(self,data,proj,obj):
+        if data['relative']:
+            data['project_url'] = '.'
+            ford.sourceform.set_base_url('.')
+            ford.pagetree.set_base_url('.')
         template = env.get_template('search.html')
         return template.render(data,project=proj)
 
@@ -289,6 +308,10 @@ class ProcList(BasePage):
         return os.path.join(self.out_dir,'lists','procedures.html')
 
     def render(self,data,proj,obj):
+        if data['relative']:
+            data['project_url'] = '..'
+            ford.sourceform.set_base_url('..')
+            ford.pagetree.set_base_url('..')
         template = env.get_template('proc_list.html')
         return template.render(data,project=proj)
 
@@ -299,6 +322,10 @@ class FileList(BasePage):
         return os.path.join(self.out_dir,'lists','files.html')
 
     def render(self,data,proj,obj):
+        if data['relative']:
+            data['project_url'] = '..'
+            ford.sourceform.set_base_url('..')
+            ford.pagetree.set_base_url('..')
         template = env.get_template('file_list.html')
         return template.render(data,project=proj)
 
@@ -309,6 +336,10 @@ class ModList(BasePage):
         return os.path.join(self.out_dir,'lists','modules.html')
 
     def render(self,data,proj,obj):
+        if data['relative']:
+            data['project_url'] = '..'
+            ford.sourceform.set_base_url('..')
+            ford.pagetree.set_base_url('..')
         template = env.get_template('mod_list.html')
         return template.render(data,project=proj)
 
@@ -319,6 +350,10 @@ class ProgList(BasePage):
         return os.path.join(self.out_dir,'lists','programs.html')
 
     def render(self,data,proj,obj):
+        if data['relative']:
+            data['project_url'] = '..'
+            ford.sourceform.set_base_url('..')
+            ford.pagetree.set_base_url('..')
         template = env.get_template('prog_list.html')
         return template.render(data,project=proj)
 
@@ -329,6 +364,10 @@ class TypeList(BasePage):
         return os.path.join(self.out_dir,'lists','types.html')
 
     def render(self,data,proj,obj):
+        if data['relative']:
+            data['project_url'] = '..'
+            ford.sourceform.set_base_url('..')
+            ford.pagetree.set_base_url('..')
         template = env.get_template('types_list.html')
         return template.render(data,project=proj)
 
@@ -339,6 +378,10 @@ class AbsIntList(BasePage):
         return os.path.join(self.out_dir,'lists','absint.html')
 
     def render(self,data,proj,obj):
+        if data['relative']:
+            data['project_url'] = '..'
+            ford.sourceform.set_base_url('..')
+            ford.pagetree.set_base_url('..')
         template = env.get_template('absint_list.html')
         return template.render(data,project=proj)
 
@@ -349,6 +392,10 @@ class BlockList(BasePage):
         return os.path.join(self.out_dir,'lists','blockdata.html')
 
     def render(self,data,proj,obj):
+        if data['relative']:
+            data['project_url'] = '..'
+            ford.sourceform.set_base_url('..')
+            ford.pagetree.set_base_url('..')
         template = env.get_template('block_list.html')
         return template.render(data,project=proj)
 
@@ -368,24 +415,40 @@ class DocPage(BasePage):
 
 class FilePage(DocPage):
     def render(self,data,proj,obj):
+        if data['relative']:
+            data['project_url'] = '..'
+            ford.sourceform.set_base_url('..')
+            ford.pagetree.set_base_url('..')
         template = env.get_template('file_page.html')
         return template.render(data,src=obj,project=proj)
 
 
 class TypePage(DocPage):
     def render(self,data,proj,obj):
+        if data['relative']:
+            data['project_url'] = '..'
+            ford.sourceform.set_base_url('..')
+            ford.pagetree.set_base_url('..')
         template = env.get_template('type_page.html')
         return template.render(data,dtype=obj,project=proj)
 
 
 class AbsIntPage(DocPage):
     def render(self,data,proj,obj):
+        if data['relative']:
+            data['project_url'] = '..'
+            ford.sourceform.set_base_url('..')
+            ford.pagetree.set_base_url('..')
         template = env.get_template('nongenint_page.html')
         return template.render(data,interface=obj,project=proj)
 
 
 class ProcPage(DocPage):
     def render(self,data,proj,obj):
+        if data['relative']:
+            data['project_url'] = '..'
+            ford.sourceform.set_base_url('..')
+            ford.pagetree.set_base_url('..')
         if obj.obj == 'proc':
             template = env.get_template('proc_page.html')
             return template.render(data,procedure=obj,project=proj)
@@ -399,17 +462,29 @@ class ProcPage(DocPage):
 
 class ModulePage(DocPage):
     def render(self,data,proj,obj):
+        if data['relative']:
+            data['project_url'] = '..'
+            ford.sourceform.set_base_url('..')
+            ford.pagetree.set_base_url('..')
         template = env.get_template('mod_page.html')
         return template.render(data,module=obj,project=proj)
 
 
 class ProgPage(DocPage):
     def render(self,data,proj,obj):
+        if data['relative']:
+            data['project_url'] = '..'
+            ford.sourceform.set_base_url('..')
+            ford.pagetree.set_base_url('..')
         template = env.get_template('prog_page.html')
         return template.render(data,program=obj,project=proj)
 
 class BlockPage(DocPage):
     def render(self,data,proj,obj):
+        if data['relative']:
+            data['project_url'] = '..'
+            ford.sourceform.set_base_url('..')
+            ford.pagetree.set_base_url('..')
         template = env.get_template('block_page.html')
         return template.render(data,blockdat=obj,project=proj)
 
@@ -483,3 +558,15 @@ def copytree(src, dst):
         for ff in files:
             shutil.copy(os.path.join(root, ff), os.path.join(dstdir, ff))
             touch(os.path.join(dstdir, ff))
+
+
+def truncate(string, width):
+    """
+    Truncates/pads the string to be the the specified length,
+    including ellipsis dots if truncation occurs.
+    """
+    if len(string) > width:
+        return string[:width-3] + '...'
+    else:
+        return string.ljust(width)
+    

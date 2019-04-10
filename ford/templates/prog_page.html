@@ -6,10 +6,10 @@
     <h1>{% if program.name -%}{{ program.name }}{% else %}<em>unnamed</em>{% endif %}
     <small>Program</small>
     {% if program.meta['deprecated'] and program.meta['deprecated'].lower() == 'true' %}
-	 <span class="label label-danger depwarn">Deprecated</span>
+   <span class="label label-danger depwarn">Deprecated</span>
     {% endif %}
     </h1>
-    {{ macros.info_bar(program.name,program.meta,project_url,program.hierarchy,program.lines_description(project.prog_lines)) }}
+    {{ macros.info_bar(program.name,program.meta,incl_src,project_url,program.hierarchy,program.lines_description(project.prog_lines)) }}
   </div>
   
   <div class="row">
@@ -19,11 +19,17 @@
     
     <div class="col-md-9" id='text'>
     {{ macros.use_list(program) }}
-    {% if program.usesgraph %}<br><br>{% endif %}
     {{ program.doc }}
     {% if program.callsgraph %}
-     <h3>Calls</h3>
-     {{ program.callsgraph }}
+    <br>
+    <div class="panel panel-default">
+      <div class="panel-heading">
+  <h3 class="panel-title">Calls</h3>
+      </div>
+      <div class="panel-body">
+  {{ program.callsgraph }}
+      </div>
+    </div>
      {% endif %}
     {% if program.doc or program.callsgraph %}<br>{% endif %}
 
@@ -67,32 +73,32 @@
     
     {% if program.interfaces|length > 0 %}
     <section>
-	 <h2>Interfaces</h2>
-	 {% for intr in program.interfaces %}
-	   {{ macros.interface(intr) }}
+   <h2>Interfaces</h2>
+   {% for intr in program.interfaces %}
+     {{ macros.interface(intr) }}
     {% endfor %}
     </section>
-	 <br>
+   <br>
     {% endif %}
     
     {% if program.absinterfaces|length > 0 %}
     <section>
-	 <h2>Abstract Interfaces</h2>
-	 {% for intr in program.absinterfaces %}
-	   {{ macros.absinterface(intr) }}
+   <h2>Abstract Interfaces</h2>
+   {% for intr in program.absinterfaces %}
+     {{ macros.absinterface(intr) }}
     {% endfor %}
     </section>
-	 <br>
+   <br>
     {% endif %}
 
     {% if program.types|length > 0 %}
     <section>
-	 <h2>Derived Types</h2>
-	 {% for type in program.types %}
-	   {{ macros.type_summary(type) }}
+   <h2>Derived Types</h2>
+   {% for type in program.types %}
+     {{ macros.type_summary(type) }}
     {% endfor %}
     </section>
-	 <br>
+   <br>
     {% endif %}
     
     {% if program.functions|length > 0 %} 
@@ -125,8 +131,4 @@
     </div>
   </div>
 
-  <section class="visible-xs visible-sm hidden-md">
-    <hr>
-    {{ macros.obj_list(project, program, 1) }}
-  </section>
   {% endblock body %}

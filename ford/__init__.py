@@ -35,7 +35,7 @@ from datetime import date, datetime
 import ford.fortran_project
 import ford.sourceform
 import ford.output
-from ford.mdx_mathjax import MathJaxExtension
+from ford.mdx_math import MathExtension
 import ford.utils
 import ford.pagetree
 
@@ -44,17 +44,22 @@ if (sys.version_info[0] > 2):
 else:
     from StringIO import StringIO
 
-__appname__    = "FORD"
-__author__     = "Chris MacMackin, Jacob Williams, Marco Restelli, Iain Barrass, Jérémie Burgalat, Stephen J. Turnbull, Balint Aradi"
-__credits__    = ["Stefano Zhagi", "Izaak Beekman", "Gavin Huttley"]
-__license__    = "GPLv3"
-__version__    = "5.0.6"
+__appname__ = "FORD"
+__author__ = "Chris MacMackin"
+__credits__ = ["Balint Aradi", "Iain Barrass", "Izaak Beekman",
+               "Jérémie Burgalat", "David Dickinson",
+               "Gavin Huttley", "Harald Klimach",
+               "Nick R. Papior", "Marco Restelli", "Schildkroete23",
+               "Stephen J. Turnbull", "Jacob Williams", "Stefano Zhagi"]
+__license__ = "GPLv3"
+__version__ = "6.0.0"
 __maintainer__ = "Chris MacMackin"
-__status__     = "Production"
+__status__ = "Production"
 
 if sys.version_info[0] < 3:
-    reload(sys)  
+    reload(sys)
     sys.setdefaultencoding('utf8')
+
 
 @contextmanager
 def stdout_redirector(stream):
@@ -64,6 +69,7 @@ def stdout_redirector(stream):
         yield
     finally:
         sys.stdout = old_stdout
+
 
 LICENSES = { 'by': '<a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/80x15.png" /></a>',
              'by-nd': '<a rel="license" href="http://creativecommons.org/licenses/by-nd/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nd/4.0/80x15.png" /></a>',
@@ -83,6 +89,12 @@ def initialize():
     Method to parse and check configurations of FORD, get the project's 
     global documentation, and create the Markdown reader.
     """
+    try:
+        import multiprocessing
+        ncpus = '{0}'.format(multiprocessing.cpu_count())
+    except (ImportError, NotImplementedError):
+        ncpus = '0'
+
     # Setup the command-line options and parse them.
     parser = argparse.ArgumentParser(description="Document a program or library written in modern Fortran. Any command-line options over-ride those specified in the project file.")
     parser.add_argument("project_file",help="file containing the description and settings for the project",
@@ -91,6 +103,7 @@ def initialize():
     parser.add_argument("-p","--page_dir",help="directory containing the optional page tree describing the project")
     parser.add_argument("-o","--output_dir",help="directory in which to place output files")
     parser.add_argument("-s","--css",help="custom style-sheet for the output")
+    parser.add_argument("-r","--revision",dest="revision",help="Source code revision the project to document")
     parser.add_argument("--exclude",action="append",help="any files which should not be included in the documentation")
     parser.add_argument("--exclude_dir",action="append",help="any directories whose contents should not be included in the documentation")
     parser.add_argument("-e","--extensions",action="append",help="extensions which should be scanned for documentation (default: f90, f95, f03, f08)")
@@ -111,7 +124,7 @@ def initialize():
     args = parser.parse_args()
     # Set up Markdown reader
     md_ext = ['markdown.extensions.meta','markdown.extensions.codehilite',
-              'markdown.extensions.extra',MathJaxExtension(),'md_environ.environ']
+              'markdown.extensions.extra',MathExtension(),'md_environ.environ']
     md = markdown.Markdown(extensions=md_ext, output_format="html5",
     extension_configs={})
     # Read in the project-file. This will contain global documentation (which
@@ -138,14 +151,17 @@ def initialize():
                'summary','github','bitbucket','facebook','twitter',
                'google_plus','linkedin','email','website','project_github',
                'project_bitbucket','project_website','project_download',
-               'project_sourceforge','project_url','display','version',
+               'project_sourceforge','project_url','display','hide_undoc','version',
                'year','docmark','predocmark','docmark_alt','predocmark_alt',
                'media_dir','favicon','warn','extra_vartypes','page_dir',
+               'incl_src',
                'source','exclude_dir','macro','include','preprocess','quiet',
-               'search','lower','sort','extra_mods','dbg','graph', 'license',
-               'extra_filetypes','preprocessor','creation_date',
+               'search','lower','sort','extra_mods','dbg','graph',
+               'graph_maxdepth', 'graph_maxnodes',
+               'license','extra_filetypes','preprocessor','creation_date',
                'print_creation_date','proc_internals','coloured_edges',
-               'graph_dir','gitter_sidecar','mathjax_config']
+               'graph_dir','gitter_sidecar','mathjax_config','parallel',
+               'revision', 'fixed_length_limit']
     defaults = {'src_dir':             ['./src'],
                 'extensions':          ['f90','f95','f03','f08','f15'],
                 'fpp_extensions':      ['F90','F95','F03','F08','F15','F','FOR'],
@@ -154,6 +170,7 @@ def initialize():
                 'project':             'Fortran Program',
                 'project_url':         '',
                 'display':             ['public','protected'],
+                'hide_undoc':          'false',
                 'year':                date.today().year,
                 'exclude':             [],
                 'exclude_dir':         [],
@@ -163,6 +180,7 @@ def initialize():
                 'predocmark_alt':      '|',
                 'favicon':             'default-icon',
                 'extra_vartypes':      [],
+                'incl_src':            'true',
                 'source':              'false',
                 'macro':               [],
                 'include':             [],
@@ -177,21 +195,20 @@ def initialize():
                 'extra_mods':          [],
                 'dbg':                 True,
                 'graph':               'false',
+                'graph_maxdepth':      '10000',
+                'graph_maxnodes':      '1000000000',
                 'license':             '',
                 'extra_filetypes':     [],
                 'creation_date':       '%Y-%m-%dT%H:%M:%S.%f%z',
                 'print_creation_date': False,
                 'coloured_edges':      'false',
+                'parallel':            ncpus,
+                'fixed_length_limit':  'true',
                }
     listopts = ['extensions','fpp_extensions','fixed_extensions','display',
                 'extra_vartypes','src_dir','exclude','exclude_dir',
                 'macro','include','extra_mods','extra_filetypes']
     # Evaluate paths relative to project file location
-    base_dir = os.path.abspath(os.path.dirname(args.project_file.name))
-    proj_data['base_dir'] = base_dir
-    for var in ['src_dir','page_dir','output_dir','exclude_dir','graph_dir','media_dir','include','favicon','css','mathjax_config']:
-        if var in proj_data:
-            proj_data[var] = [os.path.normpath(os.path.join(base_dir,os.path.expanduser(os.path.expandvars(p)))) for p in proj_data[var]]
     if args.warn:
         args.warn = 'true'
     else:
@@ -214,7 +231,18 @@ def initialize():
                 proj_data[option] = '\n'.join(proj_data[option])
         elif option in defaults:
            proj_data[option] = defaults[option]
+    base_dir = os.path.abspath(os.path.dirname(args.project_file.name))
+    proj_data['base_dir'] = base_dir
+    for var in ['src_dir','exclude_dir','include']:
+        if var in proj_data:
+            proj_data[var] = [os.path.normpath(os.path.join(base_dir,os.path.expanduser(os.path.expandvars(p)))) for p in proj_data[var]]
+    for var in ['page_dir','output_dir','graph_dir','media_dir','css','mathjax_config']:
+        if var in proj_data:
+            proj_data[var] = os.path.normpath(os.path.join(base_dir,os.path.expanduser(os.path.expandvars(proj_data[var]))))
+    if proj_data['favicon'].strip() != defaults['favicon']:
+        proj_data['favicon'] = os.path.normpath(os.path.join(base_dir,os.path.expanduser(os.path.expandvars(proj_data['favicon']))))
     proj_data['display'] = [ item.lower() for item in proj_data['display'] ]
+    proj_data['incl_src'] = proj_data['incl_src'].lower()
     proj_data['creation_date'] = datetime.now().strftime(proj_data['creation_date'])
     relative = (proj_data['project_url'] == '')
     proj_data['relative'] = relative
@@ -224,14 +252,18 @@ def initialize():
     for ext in proj_data['extra_filetypes']:
         sp = ext.split()
         if len(sp) < 2: continue
-        extdict[sp[0]] = sp[1]
+        if (len(sp)==2):
+            extdict[sp[0]] = (sp[1])        # (comment_char) only
+        else:
+            extdict[sp[0]] = (sp[1],sp[2])  # (comment_char and lexer_str)
     proj_data['extra_filetypes'] = extdict
     # Make sure no src_dir is contained within output_dir
     for projdir in proj_data['src_dir']:
         proj_path = ford.utils.split_path(projdir)
         out_path  = ford.utils.split_path(proj_data['output_dir'])
         for directory in out_path:
-            if len(proj_path) ==  0: break
+            if len(proj_path) == 0:
+                break
             if directory == proj_path[0]:
                 proj_path.remove(directory)
             else:
@@ -339,9 +371,11 @@ def main(proj_data,proj_docs,md):
     else:
         page_tree = None
     proj_data['pages'] = page_tree
+
     # Produce the documentation using Jinja2. Output it to the desired location
     # and copy any files that are needed (CSS, JS, images, fonts, source files,
     # etc.)
+
     docs = ford.output.Documentation(proj_data,proj_docs_,project,page_tree)
     docs.writeout()
     print('')

@@ -58,8 +58,8 @@ class FortranReader(object):
     SC_RE = re.compile("^([^;]*);(.*)$")
 
     def __init__(self,filename,docmark='!',predocmark='',docmark_alt='',
-                 predocmark_alt='',fixed=False,preprocessor=None,macros=[],
-                 inc_dirs=[]):
+                 predocmark_alt='',fixed=False,length_limit=True,
+                 preprocessor=None,macros=[],inc_dirs=[]):
         self.name = filename
         
         # Check that none of the docmarks are the same
@@ -77,11 +77,16 @@ class FortranReader(object):
             raise Exception('Error: predocmark and predocmark_alt are the same.')
         
         if preprocessor:
-            macros = ['-D' + mac.strip() for mac in macros]
-            incdirs = ['-I' + d.strip() for d in inc_dirs]
+            # Populate the macro definition and include directory path from
+            # the input lists.  To define a macro we prepend '-D' and for an
+            # include path we prepend '-I'.  It's important that we do not
+            # prepend to an empty string as 'cpp ... -D file.F90' doesn't do
+            # what is desired; use filter to remove these.
+            macros = ['-D' + mac.strip() for mac in filter(None,macros)]
+            incdirs = ['-I' + d.strip() for d in filter(None,inc_dirs)]
             preprocessor = preprocessor + macros + incdirs + [filename]
             fpp = subprocess.Popen(preprocessor, stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE, 
+                                   stderr=subprocess.PIPE,
                                    universal_newlines=True)
             (out, err) = fpp.communicate()
 
@@ -95,9 +100,10 @@ class FortranReader(object):
             self.reader = open(filename,'r')
         
         if fixed:
-            self.reader = convertToFree(self.reader)
+            self.reader = convertToFree(self.reader, length_limit)
         
         self.fixed = fixed
+        self.length_limit = length_limit
         self.inc_dirs = inc_dirs
         self.docbuffer = []
         self.pending = []
@@ -169,13 +175,13 @@ class FortranReader(object):
                 # Switch to predoc: following comment lines are predoc until the end of the block
                 reading_predoc = True
                 self.reading_alt = 0
-                readeing_predoc_alt = 0
+                reading_predoc_alt = 0
                 # Substitute predocmark with docmark
                 tmp = match.group(4)
                 tmp = tmp[:1] + self.docmark + tmp[1+len(self.predocmark):]
                 self.docbuffer.append(tmp)
                 if len(line[0:match.start(4)].strip()) > 0:
-                    raise Exception("Preceding documentation lines can not be inline")
+                    raise Exception("Preceding documentation lines can not be inline: {}".format(line))
 
             # Check for alternate preceding documentation
             if self.predoc_alt_re:
@@ -192,7 +198,7 @@ class FortranReader(object):
                 tmp = tmp[:1] + self.docmark + tmp[1+len(self.predocmark_alt):]
                 self.docbuffer.append(tmp)
                 if len(line[0:match.start(4)].strip()) > 0:
-                    raise Exception("Alternate documentation lines can not be inline")
+                    raise Exception("Alternate documentation lines can not be inline: {}".format(line))
 
             # Check for alternate succeeding documentation
             if self.doc_alt_re:
@@ -209,7 +215,7 @@ class FortranReader(object):
                 tmp = tmp[:1] + self.docmark + tmp[1+len(self.docmark_alt):]
                 self.docbuffer.append(tmp)
                 if len(line[0:match.start(4)].strip()) > 0:
-                    raise Exception("Alternate documentation lines can not be inline")
+                    raise Exception("Alternate documentation lines can not be inline: {}".format(line))
 
             # Capture any documentation comments
             match = self.doc_re.match(line)
@@ -250,7 +256,7 @@ class FortranReader(object):
                     if continued:
                         line = line[1:]
                     else:
-                        raise Exception("Can not start a new line in Fortran with \"&\"")
+                        raise Exception("Can not start a new line in Fortran with \"&\": {}".format(line))
                 else:
                     linebuffer = linebuffer.strip() + ' '
                 # Check if line will be continued
@@ -305,8 +311,8 @@ class FortranReader(object):
             raise Exception('Can not find include file "{}".'.format(name))
         self.pending = list(FortranReader(name, self.docmark, self.predocmark, 
                                           self.docmark_alt, self.predocmark_alt,
-                                          self.fixed, inc_dirs=self.inc_dirs)) \
-                       + self.pending
+                                          self.fixed, self.length_limit,
+                                          inc_dirs=self.inc_dirs)) + self.pending
 
 
 if __name__ == '__main__':

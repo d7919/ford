@@ -5,18 +5,18 @@
   {% import 'macros.html' as macros %}
   <div class="row">
     <h1>{{ interface.name }}
-	 <small>{% if interface.abstract -%}Abstract {% endif %}Interface</small>
+   <small>{% if interface.abstract -%}Abstract {% endif %}Interface</small>
     {% if interface.meta['deprecated'] and interface.meta['deprecated'].lower() == 'true' %}
     <span class="label label-danger depwarn">Deprecated</span>
     {% endif %}
     </h1>
     {% if interface.abstract %}
     {{
-    macros.info_bar(interface.name,interface.meta,project_url,interface.hierarchy,interface.lines_description(project.absint_lines))
+    macros.info_bar(interface.name,interface.meta,incl_src,project_url,interface.hierarchy,interface.lines_description(project.absint_lines))
     }}
     {% else %}
     {{
-    macros.info_bar(interface.name,interface.meta,project_url,interface.hierarchy,interface.lines_description(project.proc_lines,obj='proc'))
+    macros.info_bar(interface.name,interface.meta,incl_src,project_url,interface.hierarchy,interface.lines_description(project.proc_lines,obj='proc'))
     }}
     {% endif %}
   </div>
@@ -27,22 +27,38 @@
     </div>
     
     <div class="col-md-9" id='text'>
-	{% set procedure = interface.procedure %}
+    {% set procedure = interface.procedure %}
     {% if interface.doc or interface.callsgraph or interface.calledbygraph %}
-    <h2>{% if interface.abstract %}abstract {% endif %}interface</h2>
-    {{ interface.doc }}
+      <h2>{% if interface.abstract %}abstract {% endif %}interface</h2>
+      {{ interface.doc }}
+      <br>
     {% if interface.callsgraph %}
-    <h3>Calls</h3>
-    {{ interface.callsgraph }}
+    <div class="panel panel-default">
+      <div class="panel-heading">
+  <h3 class="panel-title">Calls</h3>
+      </div>
+      <div class="panel-body">
+  {{ interface.callsgraph }}
+      </div>
+    </div>
+     {% endif %}
+     {% if interface.calledbygraph %}
+    <div class="panel panel-default">
+      <div class="panel-heading">
+  <h3 class="panel-title">Called by</h3>
+      </div>
+      <div class="panel-body">
+  {{ interface.calledbygraph }}
+      </div>
+    </div>
+     {% endif %}
+    {% if interface.calledbygraph or interface.callsgraph %}
+    <br>
     {% endif %}
-    {% if interface.calledbygraph %}
-    <h3>Called By</h3>
-    {{ interface.calledbygraph }}
-    {% endif %}
-    <h2>{{ macros.proc_line(procedure,False) }}</h2>
+      <h2>{{ macros.proc_line(procedure,False) }}</h2>
     {% else %}
-    <h2>{% if interface.abstract %}abstract {% endif %}interface <br>
-    {{ macros.proc_line(procedure,False) }}</h2>    
+      <h2>{% if interface.abstract %}abstract {% endif %}interface <br>
+      {{ macros.proc_line(procedure,False) }}</h2>    
     {% endif %}
 
     {{ macros.use_list(interface) }}
@@ -72,8 +88,4 @@
  </div>
 </div>
 
-  <section class="visible-xs visible-sm hidden-md">
-    <hr>
-    {{ macros.obj_list(project, interface, 1) }}
-  </section>
 {% endblock body %}

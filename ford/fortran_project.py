@@ -31,11 +31,11 @@ import toposort
 
 import ford.sourceform
 
-INTRINSIC_MODS = {'iso_fortran_env': '<a href="https://software.intel.com/en-us/node/511041">iso_fortran_env</a>',
-                  'iso_c_binding': '<a href="https://software.intel.com/en-us/node/511038">iso_c_binding</a>',
-                  'ieee_arithmetic': '<a href="https://software.intel.com/en-us/node/511043">ieee_arithmetic</a>',
-                  'ieee_exceptions': '<a href="https://software.intel.com/en-us/node/511044">ieee_exceptions</a>',
-                  'ieee_features': '<a href="https://software.intel.com/en-us/node/511045">ieee_features</a>',
+INTRINSIC_MODS = {'iso_fortran_env': '<a href="http://fortranwiki.org/fortran/show/ISO_FORTRAN_ENV">iso_fortran_env</a>',
+                  'iso_c_binding': '<a href="http://fortranwiki.org/fortran/show/ISO_C_BINDING">iso_c_binding</a>',
+                  'ieee_arithmetic': '<a href="http://fortranwiki.org/fortran/show/IEEE_ARITHMETIC">ieee_arithmetic</a>',
+                  'ieee_exceptions': '<a href="http://fortranwiki.org/fortran/show/IEEE+arithmetic">ieee_exceptions</a>',
+                  'ieee_features': '<a href="http://fortranwiki.org/fortran/show/IEEE+arithmetic">ieee_features</a>',
                   'openacc': '<a href="http://www.openacc.org/sites/default/files/OpenACC.2.0a_1.pdf#page=49">openacc</a>',
                   'omp_lib': '<a href="https://gcc.gnu.org/onlinedocs/gcc-4.4.3/libgomp/Runtime-Library-Routines.html">omp_lib</a>',
                   'mpi': '<a href="http://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node410.htm">mpi</a>',
@@ -56,7 +56,8 @@ class Project(object):
         self.display = settings['display']
         
         if settings['preprocess'].lower() != 'true': settings['fpp_extensions'] = []
-            
+
+        html_incl_src = settings.get("incl_src","true").lower() == "true"
         
         self.files = []
         self.modules = []
@@ -86,10 +87,10 @@ class Project(object):
                         preprocessor = None
                     if settings['dbg']:
                         self.files.append(
-                            ford.sourceform.FortranSourceFile(os.path.join(curdir,item),settings, preprocessor, ext in self.fixed_extensions))
+                            ford.sourceform.FortranSourceFile(os.path.join(curdir,item),settings, preprocessor, ext in self.fixed_extensions,incl_src=html_incl_src))
                     else:
                         try:
-                            self.files.append(ford.sourceform.FortranSourceFile(os.path.join(curdir,item),settings,preprocessor, ext in self.fixed_extensions))
+                            self.files.append(ford.sourceform.FortranSourceFile(os.path.join(curdir,item),settings,preprocessor, ext in self.fixed_extensions,incl_src=html_incl_src))
                         except Exception as e:
                             print("Warning: Error parsing {}.\n\t{}".format(os.path.relpath(os.path.join(curdir,item)),e.args[0]))
                             continue
@@ -118,6 +119,14 @@ class Project(object):
                         except Exception as e:
                             print("Warning: Error parsing {}.\n\t{}".format(os.path.relpath(os.path.join(curdir,item)),e.args[0]))
                             continue
+
+    @property
+    def allfiles(self):
+        """ Instead of duplicating files, it is much more efficient to create the itterator on the fly """
+        for f in self.files:
+            yield f
+        for f in self.extra_files:
+            yield f
 
     @property
     def allfiles(self):
@@ -206,18 +215,18 @@ class Project(object):
             if proc.parobj == 'sourcefile': ranklist.append(proc)
         ranklist.extend(self.programs)
         ranklist.extend(self.blockdata)
-        
+
         # Perform remaining correlations for the project
         for container in ranklist:
             if type(container) != str: container.correlate(self)
         for container in ranklist:
             if type(container) != str: container.prune()
-        
+
         if self.settings['project_url'] == '.':
             url = '..'
         else:
             url = self.settings['project_url']
-        
+
         for sfile in self.files:
             for module in sfile.modules:
                 for function in module.functions:
@@ -230,7 +239,7 @@ class Project(object):
                     self.absinterfaces.append(absint)
                 for dtype in module.types:
                     self.types.append(dtype)
-            
+
             for module in sfile.submodules:
                 for function in module.functions:
                     self.procedures.append(function)
@@ -260,7 +269,7 @@ class Project(object):
                     self.absinterfaces.append(absint)
                 for dtype in program.types:
                     self.types.append(dtype)
-                    
+
             for block in sfile.blockdata:
                 for dtype in block.types:
                     self.types.append(dtype)
@@ -341,12 +350,12 @@ def id_mods(obj,modlist,intrinsic_mods={},submodlist=[]):
                 continue
     if getattr(obj,'ancestor',None):
         for submod in submodlist:
-            if obj.ancestor == submod.name.lower():
+            if obj.ancestor.lower() == submod.name.lower():
                 obj.ancestor = submod
                 break
     if hasattr(obj,'ancestor_mod'):
         for mod in modlist:
-            if obj.ancestor_mod == mod.name.lower():
+            if obj.ancestor_mod.lower() == mod.name.lower():
                 obj.ancestor_mod = mod
                 break
     for modproc in getattr(obj,'modprocedures',[]):

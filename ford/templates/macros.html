@@ -1,5 +1,5 @@
 
-{% macro info_bar(name,meta,base_url,hierarchy,line_info="") %}
+{% macro info_bar(name,meta,incl_src,base_url,hierarchy,line_info="") %}
 <div class="row">
   <div class="col-lg-12">
 <div class="well well-sm">
@@ -22,20 +22,28 @@
     {% if line_info %}
      <li><i class="fa fa-list-ol"></i>
        <a data-toggle="tooltip"
-	  data-placement="bottom" data-html="true"
-	  title="{{line_info}}">{{meta['num_lines']}} statements</a>
+    data-placement="bottom" data-html="true"
+    title="{{line_info}}">{{meta['num_lines']}} statements</a>
      </li> 
      {% endif %}
+     {% if incl_src  == "true" %}
      {% if hierarchy[0] %}
     <li><i class="fa fa-code"></i><a href="{{ base_url }}/src/{{ hierarchy[0].name }}"> Source File</a></li>
      {% else %}
     <li><i class="fa fa-code"></i><a href="{{ base_url }}/src/{{ name }}"> Source File</a></li>
      {% endif %}
+     {% endif %}
   </ul>
   <ol class="breadcrumb in-well text-right">
-  {% for item in hierarchy %}
+  {% if incl_src  == "true" %}
+    {% for item in hierarchy %}
      <li>{{ item }}</li>
-  {% endfor %}
+    {% endfor %}
+  {% else %}
+    {% for item in hierarchy[1:] %}
+     <li>{{ item }}</li>
+    {% endfor %}
+  {%endif%}
      <li class="active">{{ name }}</li>
   </ol>
 </div>
@@ -50,7 +58,10 @@
 
 
 {% macro content_list(self,panelnum=0) %}
+<h3>Contents</h3>
+{% set count = 0 %} 
 {% if self.common %}
+{% set count = count + 1 %}
 <div class="panel panel-primary">
   <div class="panel-heading
   text-left"><h3 class="panel-title"><a data-toggle="collapse"
@@ -65,6 +76,7 @@
 </div>
 {% endif %}
 {% if self.variables %}
+{% set count = count + 1 %}
 <div class="panel panel-primary">
   <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#vars-{{ panelnum }}">Variables</a></h3></div>
   <div id="vars-{{ panelnum }}" class="panel-collapse collapse">
@@ -77,6 +89,7 @@
 </div>
 {% endif %}
 {% if self.enums %}
+{% set count = count + 1 %}
 <div class="panel panel-primary">
   <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#enums-{{ panelnum }}">Enumerations</a></h3></div>
   <div id="enums-{{ panelnum }}" class="panel-collapse collapse">
@@ -89,6 +102,7 @@
 </div>
 {% endif %}
 {% if self.constructor %}
+{% set count = count + 1 %}
 <div class="panel panel-primary">
   <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#cons-{{ panelnum }}">Constructor</a></h3></div>
   <div id="cons-{{ panelnum }}" class="panel-collapse collapse">
@@ -99,18 +113,20 @@
 </div>
 {% endif %}
 {% if self.programs %}
+{% set count = count + 1 %}
 <div class="panel panel-primary">
   <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#progs-{{ panelnum }}">Programs</a></h3></div>
   <div id="progs-{{ panelnum }}" class="panel-collapse collapse">
     <div class="list-group">
       {% for prog in self.programs %}
-      <a class="list-group-item" href="{{ prog.get_url() }}">{% if prog.name -%}{{ prog.name }}{% else -%}<em>unnammed</em>{%-	endif %}</a>
+      <a class="list-group-item" href="{{ prog.get_url() }}">{% if prog.name -%}{{ prog.name }}{% else -%}<em>unnammed</em>{%-  endif %}</a>
       {% endfor %}
     </div>
   </div>
 </div>
 {% endif %}
 {% if self.modules %}
+{% set count = count + 1 %}
 <div class="panel panel-primary">
   <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#mods-{{ panelnum }}">Modules</a></h3></div>
   <div id="mods-{{ panelnum }}" class="panel-collapse collapse">
@@ -123,6 +139,7 @@
 </div>
 {% endif %}
 {% if self.submodules %}
+{% set count = count + 1 %}
 <div class="panel panel-primary">
   <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#submods-{{ panelnum }}">Submodules</a></h3></div>
   <div id="submods-{{ panelnum }}" class="panel-collapse collapse">
@@ -135,6 +152,7 @@
 </div>
 {% endif %}
 {% if self.blockdata %}
+{% set count = count + 1 %}
 <div class="panel panel-primary">
   <div class="panel-heading
   text-left"><h3 class="panel-title"><a data-toggle="collapse"
@@ -149,6 +167,7 @@
 </div>
 {% endif %}
 {% if self.interfaces %}
+{% set count = count + 1 %}
 <div class="panel panel-primary">
   <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#inters-{{ panelnum }}">Interfaces</a></h3></div>
   <div id="inters-{{ panelnum }}" class="panel-collapse collapse">
@@ -161,6 +180,7 @@
 </div>
 {% endif %}
 {% if self.absinterfaces %}
+{% set count = count + 1 %}
 <div class="panel panel-primary">
   <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#absints-{{ panelnum }}">Abstract Interfaces</a></h3></div>
   <div id="absints-{{ panelnum }}" class="panel-collapse collapse">
@@ -173,6 +193,7 @@
 </div>
 {% endif %}
 {% if self.types %}
+{% set count = count + 1 %}
 <div class="panel panel-primary">
   <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#types-{{ panelnum }}">Derived Types</a></h3></div>
   <div id="types-{{ panelnum }}" class="panel-collapse collapse">
@@ -185,6 +206,7 @@
 </div>
 {% endif %}
 {% if self.functions %}
+{% set count = count + 1 %}
 <div class="panel panel-primary">
   <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#funcs-{{ panelnum }}">Functions</a></h3></div>
   <div id="funcs-{{ panelnum }}" class="panel-collapse collapse">
@@ -197,6 +219,7 @@
 </div>
 {% endif %}
 {% if self.subroutines %}
+{% set count = count + 1 %}
 <div class="panel panel-primary">
   <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#subs-{{ panelnum }}">Subroutines</a></h3></div>
   <div class="list-group">
@@ -209,6 +232,7 @@
 </div>
 {% endif %}
 {% if self.modfunctions %}
+{% set count = count + 1 %}
 <div class="panel panel-primary">
   <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#modfuncs-{{ panelnum }}">Module Functions</a></h3></div>
   <div id="modfuncs-{{ panelnum }}" class="panel-collapse collapse">
@@ -221,6 +245,7 @@
 </div>
 {% endif %}
 {% if self.modsubroutines %}
+{% set count = count + 1 %}
 <div class="panel panel-primary">
   <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#modsubs-{{ panelnum }}">Module Subroutines</a></h3></div>
   <div id="modsubs-{{ panelnum }}" class="panel-collapse collapse">
@@ -233,6 +258,7 @@
 </div>
 {% endif %}
 {% if self.modprocedures %}
+{% set count = count + 1 %}
 <div class="panel panel-primary">
   <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#modprocs-{{ panelnum }}">Module Procedures</a></h3></div>
   <div id="modprocs-{{ panelnum }}" class="panel-collapse collapse">
@@ -245,6 +271,7 @@
 </div>
 {% endif %}
 {% if self.finalprocs %}
+{% set count = count + 1 %}
 <div class="panel panel-primary">
   <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#fins-{{ panelnum }}">Finalization Procedures</a></h3></div>
   <div id="fins-{{ panelnum }}" class="panel-collapse collapse">
@@ -257,6 +284,7 @@
 </div>
 {% endif %}
 {% if self.boundprocs %}
+{% set count = count + 1 %}
 <div class="panel panel-primary">
   <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#boundprocs-{{ panelnum }}">Type-Bound Procedures</a></h3></div>
   <div id="boundprocs-{{ panelnum }}" class="panel-collapse collapse">
@@ -269,6 +297,7 @@
 </div>
 {% endif %}
 {% if self.modprocs %}
+{% set count = count + 1 %}
 <div class="panel panel-primary">
   <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#modprocs-{{ panelnum }}">Module Procedures</a></h3></div>
   <div id="modprocs-{{ panelnum }}" class="panel-collapse collapse">
@@ -281,6 +310,7 @@
 </div>
 {% endif %}
 {% if self.src %}
+{% set count = count + 1 %}
 <div class="panel panel-primary">
   <div class="panel-heading text-left"><h3 class="panel-title">Source Code</h3></div>
   <div class="list-group">
@@ -288,89 +318,8 @@
   </div>
 </div>
 {% endif %}
-{% endmacro %}
-
-
-{% macro obj_list(project,self,panelnum=0) %}
-{% if self.obj == 'program' %}
-<div class="panel panel-default">
-  <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#allprogs-{{ panelnum }}">All Programs</a></h3></div>
-  <div id="allprogs-{{ panelnum }}" class="panel-collapse collapse">
-    <div class="list-group">
-      {% for prog in project.programs|sort(attribute='name') %}
-      <a class="list-group-item" href="{{ prog.get_url() }}">{% if prog.name -%}{{ prog.name }}{% else -%}<em>unnammed</em>{%- endif %}</a>
-      {% endfor %}
-    </div>
-  </div>
-</div>
-{% elif self.obj == 'module' or self.obj == 'submodule' %}
-<div class="panel panel-default">
-  <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#allmods-{{ panelnum }}">All Modules</a></h3></div>
-  <div id="allmods-{{ panelnum }}" class="panel-collapse collapse">
-    <div class="list-group">
-      {% for mod in project.modules|sort(attribute='name') %}
-      <a class="list-group-item" href="{{ mod.get_url() }}">{{ mod.name }}</a>
-      {% endfor %}
-    </div>
-  </div>
-</div>
-{% elif self.obj == 'proc' or (self.obj == 'interface' and (not self.abstract)) %}
-<div class="panel panel-default">
-  <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#allprocs-{{ panelnum }}">All Procedures</a></h3></div>
-  <div id="allprocs-{{ panelnum }}" class="panel-collapse collapse">
-    <div class="list-group">
-      {% for proc in project.procedures|sort(attribute='name') %}
-      <a class="list-group-item" href="{{ proc.get_url() }}">{{ proc.name }}</a>
-      {% endfor %}
-    </div>
-  </div>
-</div>
-{% elif self.obj == 'interface' %}
-<div class="panel panel-default">
-  <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#allabsints-{{ panelnum }}">All Abstract Interfaces</a></h3></div>
-  <div id="allabsints-{{ panelnum }}" class="panel-collapse collapse">
-    <div class="list-group">
-      {% for absint in project.absinterfaces|sort(attribute='name') %}
-      <a class="list-group-item" href="{{ absint.get_url() }}">{{ absint.name }}</a>
-      {% endfor %}
-    </div>
-  </div>
-</div> 
-{% elif self.obj == 'type' %}
-<div class="panel panel-default">
-  <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#alltypes-{{ panelnum }}">All Derived Types</a></h3></div>
-  <div id="alltypes-{{ panelnum }}" class="panel-collapse collapse">
-    <div class="list-group">
-      {% for dtype in project.types|sort(attribute='name') %}
-      <a class="list-group-item" href="{{ dtype.get_url() }}">{{ dtype.name }}</a>
-      {% endfor %}
-    </div>
-  </div>
-</div>
-{% elif self.obj == 'sourcefile' %}
-<div class="panel panel-default">
-  <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#allfiles-{{ panelnum }}">All Source Files</a></h3></div>
-  <div id="allfiles-{{ panelnum }}" class="panel-collapse collapse">
-    <div class="list-group">
-      {% for src in project.allfiles|sort(attribute='name') %}
-      <a class="list-group-item" href="{{ src.get_url() }}">{{ src.name }}</a>
-      {% endfor %}
-    </div>
-  </div>
-</div>
-{% elif self.obj == 'blockdata' %}
-<div class="panel panel-default">
-  <div class="panel-heading
-  text-left"><h3 class="panel-title"><a data-toggle="collapse"
-  href="#allblocks-{{ panelnum }}">All Block Data Units</a></h3></div>
-  <div id="allblocks-{{ panelnum }}" class="panel-collapse collapse">
-    <div class="list-group">
-      {% for blockdat in project.blockdata|sort(attribute='name') %}
-      <a class="list-group-item" href="{{ blockdat.get_url() }}">{{ blockdat.name }}</a>
-      {% endfor %}
-    </div>
-  </div>
-</div>
+{% if count == 0 %}
+<em>None</em>
 {% endif %}
 {% endmacro %}
 
@@ -378,9 +327,7 @@
 {% macro sidebar(project,self) %}
 <div id="sidebar">
   {{ content_list(self) }}
-  {% if self.contents_size > 0 %}<hr>{% endif %}
-  {{ obj_list(project,self) }}
-</div>  
+</div>
 {% endmacro %}
 
 
@@ -463,7 +410,7 @@
 <div class="panel panel-default">
   <div class="panel-heading codesum"><span class="anchor" id="{{ tb.anchor }}"></span><h3>{% if tb.generic -%}generic,{% else %}procedure{% if tb.proto -%}({% if not tb.protomatch or tb.proto.visible -%}{{ tb.proto }}{% else %}{{ tb.proto.name }}{%- endif %}){%- endif %},{%- endif %} {{ tb.permission }}{% if tb.deferred -%}, deferred{%- endif %}{% if tb.attribs -%}, {% for attrib in tb.attribs -%}{{ attrib }}{% if not loop.last -%}, {% endif %}{%- endfor %}{%- endif %} :: <strong>{{ tb.name }}</strong> {% if tb.generic or (tb.name != tb.bindings[0].name and tb.name != tb.bindings[0]) %} => {% for bind in tb.bindings -%}{% if not bind.parent or bind.visible %}{{ bind }}{% else %}{{ bind.name }}{% endif %}{% if not loop.last -%}, {% endif %}{%- endfor %}{% endif %} {% if tb.binding|length == 1 %}<small>{{ tb.bindings[0].proctype }}</small>{% endif %}
     {% if tb.meta['deprecated'] and tb.meta['deprecated'].lower() == 'true' %}
-	 <span class="label label-danger depwarn">Deprecated</span>
+   <span class="label label-danger depwarn">Deprecated</span>
     {% endif %}
   </h3></div>
   {% if tb.doc or meta_list(tb.meta)|trim|length > 1 %}
@@ -492,7 +439,23 @@
             {{ proc_summary(bind.bindings[0]) }}
          {% endif %}
       {% else %}
-         {{ proc_summary(bind) }}
+        {% if bind.obj == 'interface' %}
+          <h3>interface
+          {% if bind.meta['deprecated'] and bind.meta['deprecated'].lower() == 'true' %}
+          <span class="label label-danger depwarn">Deprecated</span>
+          {% endif %}
+          </h3>
+  
+          {% if bind.doc or (meta_list(bind.meta)|trim|length > 0 and not bind.visible) %}
+            {% if not bind.visible %}
+              {{ meta_list(bind.meta) }}
+            {% endif %}
+            {{ bind.meta['summary'] }}
+          {% endif %}
+          {{ proc_summary(bind.procedure) }}
+        {% else %}
+          {{ proc_summary(bind) }}
+        {% endif %}
       {% endif %}
       </li>
     {% endfor %}
@@ -541,7 +504,7 @@
 <div class="panel panel-default">
   <div class="panel-heading codesum"><span class="anchor" id="{{ intr.anchor }}"></span><h3>abstract interface
     {% if intr.meta['deprecated'] and intr.meta['deprecated'].lower() == 'true' %}
-	 <span class="label label-danger depwarn">Deprecated</span>
+   <span class="label label-danger depwarn">Deprecated</span>
     {% endif %}
   </h3></div>
   {% if intr.doc or meta_list(intr.meta)|trim|length > 0 %}
@@ -561,13 +524,13 @@
 {% macro proc_line(proc,link=True,proto=False) %}
 {% if proc.mp %}module procedure {% if not proc.parent or (proc.visible and link) %}{{ proc }}{% else %}{{ proc.name }}{% endif %} <small>{% endif %}{% if (proc.parobj == 'module' or (proc.parobj == 'interface' and proc.parent.parobj == 'module')) and not proto %}{{ proc.permission }} {% endif %}{% for attrib in proc.attribs -%}{{ attrib }}{#{% if not loop.last or proc.module %}#} {#{% endif %}#}{%- endfor %}{% if proc.module and proc.module != True and (proc.parobj == 'interface' or proc.parobj == 'submodule') %}module {% endif %}{{ proc.proctype|lower }} {% if not proc.parent or (proc.visible and link and not proc.mp) %}{{ proc }}{% else %}{{ proc.name }}{% endif %}({% for arg in proc.args -%}{{ arg.name }}{% if not loop.last -%}, {% endif %}{%- endfor %}){% if proc.proctype|lower == 'function' and proc.name != proc.retvar.name %} result({{ proc.retvar.name }}){% endif %}{% if proc.bindC %} bind({{ proc.bindC }}){% endif %}{% if proc.mp %}</small>{% endif %}
     {% if proc.meta['deprecated'] and proc.meta['deprecated'].lower() == 'true' %}
-	 <span class="label label-danger depwarn">Deprecated</span>
+   <span class="label label-danger depwarn">Deprecated</span>
     {% endif %}
     {% if proc.module and proc.module != True and proc.parobj == 'submodule' and proc.module.visible %}
-	 <a href='{{ proc.module.get_url() }}'><button type="button" class="btn btn-info depwarn">Interface &rarr;</button></a>
+   <a href='{{ proc.module.get_url() }}'><button type="button" class="btn btn-info depwarn">Interface &rarr;</button></a>
     {% endif %}
-	 {% if proc.module and proc.module != True and proc.parobj == 'interface' and proc.module.visible %}
-	 <a href='{{ proc.module.get_url() }}'><button type="button" class="btn btn-info depwarn">Implementation &rarr;</button></a>
+   {% if proc.module and proc.module != True and proc.parobj == 'interface' and proc.module.visible %}
+   <a href='{{ proc.module.get_url() }}'><button type="button" class="btn btn-info depwarn">Implementation &rarr;</button></a>
     {% endif %}
 {% endmacro %}
 
@@ -576,7 +539,7 @@
 <div class="panel panel-default">
   <div class="panel-heading codesum"><span class="anchor" id="{{ proc.anchor }}"></span><h3>final :: <strong>{{ proc.name }}</strong> 
     {% if proc.meta['deprecated'] and proc.meta['deprecated'].lower() == 'true' %}
-	 <span class="label label-danger depwarn">Deprecated</span>
+   <span class="label label-danger depwarn">Deprecated</span>
     {% endif %}</h3></div>
   <div class="panel-body">
     {{ meta_list(proc.meta) }}
@@ -595,7 +558,7 @@
 <div class="panel panel-default">
   <div class="panel-heading codesum"><span class="anchor" id="{{ dtype.anchor }}"></span><h3>type{% if dtype.parobj == 'module' %}, {{ dtype.permission }}{% endif %}{% if dtype.sequence %}, sequence {% endif %}{% for attrib in dtype.attributes -%}, {{ attrib }}{%- endfor %}{% if dtype.extends %}, extends({{ dtype.extends }}){% endif %} :: {% if dtype.visible %}{{ dtype }}{% else %}{{ dtype.name }}{% endif %}
     {% if dtype.meta['deprecated'] and dtype.meta['deprecated'].lower() == 'true' %}
-	 <span class="label label-danger depwarn">Deprecated</span>
+   <span class="label label-danger depwarn">Deprecated</span>
     {% endif %}
   </h3></div>
   <div class="panel-body">
@@ -659,8 +622,8 @@
 <div class="panel panel-default">
   <div class="panel-heading codesum"><span class="anchor" id="{{ com.anchor }}"></span><h3>
       <a data-toggle="popover" data-html="true" tabindex="0" 
-	   data-trigger="focus"
-	 data-content="<h4>Used Elsewhere:</h4>{% for item in com.other_uses %}{% if item != com %}<a href='{{ item.get_url() }}'>{% if item.parent.name -%}{{ item.parent.name }}{%- else -%}<em>unnamed</em>{%- endif %}</a> ({% if item.parobj == 'proc' -%}{{ item.parent.proctype|lower }}{%- else -%}{{ item.parobj }}{%- endif %})<br>{% endif %}{% endfor %}">common{% if com.name %} /{{ com.name }}/{% endif %}</a>
+     data-trigger="focus"
+   data-content="<h4>Used Elsewhere:</h4>{% for item in com.other_uses %}{% if item != com %}<a href='{{ item.get_url() }}'>{% if item.parent.name -%}{{ item.parent.name }}{%- else -%}<em>unnamed</em>{%- endif %}</a> ({% if item.parobj == 'proc' -%}{{ item.parent.proctype|lower }}{%- else -%}{{ item.parobj }}{%- endif %})<br>{% endif %}{% endfor %}">common{% if com.name %} /{{ com.name }}/{% endif %}</a>
       {% if com.meta['deprecated'] and com.meta['deprecated'].lower() == 'true' %}
       <span class="label label-danger depwarn">Deprecated</span>
       {% endif %}
@@ -712,40 +675,69 @@
 {% endmacro %}
 
 
-{% macro ancestry(obj) %}
-  {% if obj.ancestry|length > 0 %}
-    <ul class="list-inline">
-      <li><h4>Ancestors:</h4></li>
-      {% for anc in obj.ancestry %}
-      <li>{{ anc }}</li>
-      {% if not loop.last -%}<li>:</li>{%- endif %}
-      {% endfor %}
-    </ul>
-  {% endif %}
+{% macro use_list(obj) %}
+  {% if obj.uses|length > 0 or (obj.ancestry and obj.ancestry|length >
+    0) %}
+    <div class="panel panel-default">
+      <div class="panel-heading">
+  <h3 class="panel-title">Uses</h3>
+      </div>
+      <ul class="list-group">
+      {% if obj.uses|length > 0 %}
+      <li class="list-group-item">
+  <ul class="list-inline">
+    {% for use in obj.uses %}
+    <li>{{ use }}</li>
+    {% endfor %}
+  </ul>
+      </li>
+      {% endif %}
+      {% if obj.ancestry and obj.ancestry|length > 0 %}
+      <li class="list-group-item">
+  <ul class="list-inline">
+    <li><h5>Ancestors:</h5></li>
+    {% for anc in obj.ancestry %}
+    <li>{{ anc }}</li>
+    {% if not loop.last -%}<li>:</li>{%- endif %}
+    {% endfor %}
+  </ul>
+      </li>
+      {% endif %}
+      {% if obj.usesgraph %}
+      <li class="list-group-item">
+  {{ obj.usesgraph }}
+      </li>
+      {% endif %}
+      </ul>
+    </div>
+    {% endif %}
 {% endmacro %}
 
-
-{% macro descendants(obj) %}
+    
+{% macro usedby_list(obj) %}
+    {% if obj.usedbygraph or (obj.descendants and obj.descendants|length > 0) %}
+    <div class="panel panel-default">
+      <div class="panel-heading">
+  <h3 class="panel-title">Used by</h3>
+      </div>
+      <ul class="list-group">
   {% if obj.descendants|length > 0 %}
+  <li class="list-group-item">  
     <ul class="list-inline">
-      <li><h4>Descendants:</h4></li>
+      <li><h5>Descendants:</h5></li>
       {% for anc in obj.descendants %}
       <li>{{ anc }}</li>
       {% endfor %}
     </ul>
+  </li>
   {% endif %}
-{% endmacro %}
-
-
-{% macro use_list(obj) %}
-  {% if obj.uses|length > 0 %}
-    <ul class="list-inline">
-      <li><h4>Uses:</h4></li>
-      {% for use in obj.uses %}
-      <li>{{ use }}</li>
-      {% endfor %}
-    </ul>
-    {{ obj.usesgraph }}
+  {% if obj.usedbygraph %}
+  <li class="list-group-item">
+    {{ obj.usedbygraph }}
+  </li>
+  {% endif %}
+      </ul>
+    </div>
     {% endif %}
 {% endmacro %}
 
