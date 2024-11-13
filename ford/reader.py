@@ -168,11 +168,13 @@ class FortranReader:
             print(f"Preprocessing {filename}")
             preprocessor_command = preprocessor + macros + incdirs + [filename]
             if preprocessor_command[0] == 'pcpp':
-                local_out = StringIO()
+                from tempfile import NamedTemporaryFile
                 from pcpp.pcmd import CmdPreprocessor
-                with redirect_stdout(local_out):
+                with NamedTemporaryFile() as local_out:
+                    preprocessor_command += ["-o", local_out.name]
                     _ = CmdPreprocessor(preprocessor_command)
-                    self.reader = StringIO(local_out.getvalue())
+                    with open(local_out.name, 'r') as f:
+                        self.reader = StringIO(f.read())
             else:
                 command = ' '.join(preprocessor_command)
                 try:

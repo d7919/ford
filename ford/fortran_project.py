@@ -182,7 +182,7 @@ class Project:
                 )
 
         from tqdm.contrib.concurrent import thread_map as parallel_map
-        _ = parallel_map(parse_file, find_all_files(settings),
+        _ = parallel_map(parse_file, find_all_files(settings), chunksize = 1,
                          desc = "Parsing files")
 
     def _fortran_file(
