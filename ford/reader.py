@@ -167,25 +167,18 @@ class FortranReader:
             incdirs = [f"-I{d}" for d in self.inc_dirs]
             print(f"Preprocessing {filename}")
             preprocessor_command = preprocessor + macros + incdirs + [filename]
-            if preprocessor_command[0] == 'pcpp':
-                from tempfile import NamedTemporaryFile
-                from pcpp.pcmd import CmdPreprocessor
-                with NamedTemporaryFile() as local_out:
-                    preprocessor_command += ["-o", local_out.name]
-                    _ = CmdPreprocessor(preprocessor_command)
-                    with open(local_out.name, 'r') as f:
-                        self.reader = StringIO(f.read())
-            else:
+            from tempfile import NamedTemporaryFile
+            with NamedTemporaryFile() as local_out:
+                preprocessor_command += ["-o", local_out.name]
                 command = ' '.join(preprocessor_command)
                 try:
-                    out = subprocess.run(
-                        preprocessor_command, encoding=encoding, check=True, capture_output=True
-                    )
+                    out = subprocess.run(preprocessor_command, encoding=encoding)
                     if out.stderr:
                         warn(
                             f"Warning when preprocessing {filename}:\n{command}\n{out.stderr}"
                         )
-                    self.reader = StringIO(out.stdout)
+                    with open(local_out.name, 'r') as f:
+                        self.reader = StringIO(f.read())
                 except subprocess.CalledProcessError as err:
                     warn(
                         f"error when preprocessing {filename}:\n{command}\n{err.stderr}\n"
