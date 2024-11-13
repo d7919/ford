@@ -164,14 +164,8 @@ class Project:
         self.extVariables: List[ExternalVariable] = []
         self.namelists: List[FortranNamelist] = []
 
-        # Get all files within topdir, recursively
-
-        for filename in (
-            progress := ProgressBar("Parsing files", find_all_files(settings))
-        ):
+        def parse_file(filename):
             relative_path = os.path.relpath(filename)
-            progress.set_current(relative_path)
-
             extension = str(filename.suffix)[1:]  # Don't include the initial '.'
             fortran_extensions = self.extensions + self.fixed_extensions
             try:
@@ -186,7 +180,10 @@ class Project:
                 warn(
                     f"Error parsing {relative_path}.\n\t{e.args if len(e.args) == 0 else e.args[0]}"
                 )
-                continue
+
+        from tqdm.contrib.concurrent import thread_map as parallel_map
+        _ = parallel_map(parse_file, find_all_files(settings),
+                         desc = "Parsing files")
 
     def _fortran_file(
         self, extension: str, filename: PathLike, settings: ProjectSettings
